@@ -55,16 +55,19 @@ Response Guidelines:
 def query_openai_api(context, question, assistant_placeholder,history):
     prompt = f"{question} Context: {context}"
     print("🚀 ~ context:", prompt)
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
+    messages = [
             {"role":"system","content":system_prompt},
         {"role": "user", "content": prompt}
-        ],
+    ]
+    messages.extend(history)
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
         temperature=0.5,
         top_p=0.5,
         stream=True
     )
+    
     assistant_message =""
     for chunk in response:
             if chunk.choices:
@@ -108,15 +111,16 @@ def main():
             st.session_state.chat_history = []
             st.rerun()
         
-        for q, a in st.session_state.chat_history:
-            with st.container():
-                st.markdown(
-                    user_template.replace("{{MSG}}", q),
-                    unsafe_allow_html=True
-                )
-                st.markdown(
-                    bot_template.replace("{{MSG}}", a),
-                    unsafe_allow_html=True
+        for i, message in enumerate(st.session_state.chat_history):
+            if message["role"] == "user":
+                st.write(
+                    user_template.replace("{{MSG}}", message["content"]),
+                    unsafe_allow_html=True,
+                )   
+            else:
+                st.write(
+                    bot_template.replace("{{MSG}}", message["content"]),
+                    unsafe_allow_html=True,
                 )
         assistant_placeholder = st.empty()
         # Chat UI (Always at the Bottom)
@@ -125,8 +129,9 @@ def main():
         if st.button("🔍 Search"):
             if st.session_state.scraped_data:
                 last_five_history = st.session_state.chat_history[-5:]  # Pass last 5 messages
+                st.session_state.chat_history.append({"role": "user", "content": question})
                 answer = query_openai_api(st.session_state.scraped_data, question, assistant_placeholder, last_five_history)
-                st.session_state.chat_history.append((question, answer))
+                st.session_state.chat_history.append({"role": "assistant", "content": answer})
                 # Refresh to display the latest message
                 st.rerun()
                 question = ""
