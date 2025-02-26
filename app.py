@@ -132,8 +132,8 @@ def main():
         assistant_placeholder = st.empty()
         # Chat UI (Always at the Bottom)
         
-        question = st.text_input("Type your question here...", key="question_input")
-        if st.button("🔍 Search"):
+        question = st.chat_input("Type your question here...", key="question_input")
+        if question:
             if st.session_state.scraped_data:
                 last_five_history = st.session_state.chat_history[-5:]  # Pass last 5 messages
                 answer = query_openai_api(st.session_state.scraped_data, question, assistant_placeholder, last_five_history)
