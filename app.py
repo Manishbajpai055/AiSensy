@@ -6,6 +6,7 @@ import os
 from scraper import scrape  # Importing the scrape function
 from openai import OpenAI
 from htmlTemplates import css, bot_template, user_template
+import json
 
 # Initialize OpenAI Client
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
@@ -50,6 +51,20 @@ Response Guidelines:
 
 """
 
+def get_suggested_prompts(context):
+    prompt = f"Provide exactly 2 relevant questions in JSON array format, structured as follows: [{{\"question\": \"Your question here\"}}]. Do not include any other text. Use the given context: {context}"
+    response =  client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": prompt}
+        ],
+        temperature=0.7,
+        max_tokens=150
+    )
+    
+    
+    return response.choices[0].message.content
+
 
 # Query OpenAI
 def query_openai_api(context, question, assistant_placeholder,history):
@@ -88,14 +103,26 @@ def query_openai_api(context, question, assistant_placeholder,history):
     print(assistant_message)
     return assistant_message
 
+
+def setState(state,value):
+    st.session_state[state] = value
+    print(f"Button clicked: {value}")
+    st.session_state.show_suggestions = False
+
+
 def main():
     st.set_page_config(page_title="Web Content Q&A", page_icon="📚")
     # st.subheader("💬 Ask a Question")
     
     if "scraped_data" not in st.session_state:
         st.session_state.scraped_data = None
+    if "question" not in st.session_state:
+        st.session_state.question = None
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
+    # Get suggested prompts only once  
+    if "show_suggestions" not in st.session_state:
+        st.session_state.show_suggestions = True
 
     # Centered URL input before scraping
     if not st.session_state.scraped_data:
@@ -111,7 +138,6 @@ def main():
             st.rerun()
 
     else:
-        # New Chat Button
         
         if st.button("🆕 New Chat"):
             st.session_state.scraped_data = None
@@ -130,9 +156,23 @@ def main():
                     unsafe_allow_html=True,
                 )
         assistant_placeholder = st.empty()
-        # Chat UI (Always at the Bottom)
-        
         question = st.chat_input("Type your question here...", key="question_input")
+        # Chat UI (Always at the Bottom)
+        if st.session_state.show_suggestions:
+            suggestion = get_suggested_prompts(st.session_state.scraped_data)
+            suggestion = json.loads(suggestion)
+            print("🚀 ~ suggestion:", suggestion)
+
+            st.markdown("##### Suggestions:")
+            cols = st.columns(len(suggestion))
+            
+            for i, item in enumerate(suggestion):
+                print("🚀🚀🚀🚀🚀🚀 ~ item:", i, item)
+                eachquestion = item["question"]
+                if cols[i].button(eachquestion,on_click=setState,args=["question",eachquestion]):
+                    print("button")
+
+        
         if question:
             if st.session_state.scraped_data:
                 last_five_history = st.session_state.chat_history[-5:]  # Pass last 5 messages
@@ -144,6 +184,14 @@ def main():
                 question = ""
             else:
                 st.warning("⚠️ Please scrape content first before asking a question.")
+        if st.session_state.question:
+            last_five_history = st.session_state.chat_history[-5:]  # Pass last 5 messages
+            answer = query_openai_api(st.session_state.scraped_data, st.session_state.question, assistant_placeholder, last_five_history)
+            st.session_state.chat_history.append({"role": "user", "content": st.session_state.question})
+            st.session_state.chat_history.append({"role": "assistant", "content": answer})
+            st.session_state.question = None
+            # Refresh to display the latest message
+            st.rerun()
 
 
 
