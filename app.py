@@ -54,18 +54,19 @@ Response Guidelines:
 # Query OpenAI
 def query_openai_api(context, question, assistant_placeholder,history):
     prompt = f"{question} Context: {context}"
-    print("🚀 ~ context:", prompt)
+    print("🚀 ~ context:", question)
     messages = [
-            {"role":"system","content":system_prompt},
-        {"role": "user", "content": prompt}
+            {"role":"system","content":system_prompt}
     ]
     messages.extend(history)
+    # print("messages",messages)
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=messages,
-        temperature=0.5,
-        top_p=0.5,
-        stream=True
+        messages=[*messages,{"role":"system","content":prompt}],
+        temperature=0.6,
+        # top_p=0.5,
+        stream=True,
+        stream_options={"include_usage": True}
     )
     
     assistant_message =""
@@ -79,6 +80,12 @@ def query_openai_api(context, question, assistant_placeholder,history):
                         bot_template.replace("{{MSG}}", assistant_message),
                         unsafe_allow_html=True
                     )
+            if chunk.usage is not None:
+                print("\n🔹 Usage Details:")
+                print(f"Prompt Tokens: {chunk.usage.prompt_tokens}")
+                print(f"Completion Tokens: {chunk.usage.completion_tokens}")
+                print(f"Total Tokens: {chunk.usage.total_tokens}")
+    print(assistant_message)
     return assistant_message
 
 def main():
@@ -129,8 +136,8 @@ def main():
         if st.button("🔍 Search"):
             if st.session_state.scraped_data:
                 last_five_history = st.session_state.chat_history[-5:]  # Pass last 5 messages
-                st.session_state.chat_history.append({"role": "user", "content": question})
                 answer = query_openai_api(st.session_state.scraped_data, question, assistant_placeholder, last_five_history)
+                st.session_state.chat_history.append({"role": "user", "content": question})
                 st.session_state.chat_history.append({"role": "assistant", "content": answer})
                 # Refresh to display the latest message
                 st.rerun()
