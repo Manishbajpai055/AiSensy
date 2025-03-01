@@ -33,7 +33,6 @@ system_prompt="""
 You are an intelligent Q&A assistant that provides precise, context-aware answers based only on the provided content. Your goal is to ensure accuracy while understanding different phrasings of a question.
 
 Response Guidelines:
-	1.	Use Only Provided Context – Answer strictly based on the given content. If insufficient, respond: “The provided content does not contain enough information to answer this question.”
 	2.	Understand Variations – Recognize different wordings, synonyms, and structures. Prioritize meaning over exact keyword matches.
 	3.	Be Clear & Concise – Provide direct, relevant answers while ensuring completeness. Summarize when necessary.
 	4.	Preserve Accuracy – Do not alter or misinterpret the content. If multiple sources exist, specify the source.
@@ -65,7 +64,7 @@ def query_openai_api(context, question, assistant_placeholder,history):
             {"role":"system","content":system_prompt}
     ]
     messages.extend(history)
-    # print("messages",messages)
+    print("messages",messages)
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[*messages,{"role":"system","content":prompt}],
@@ -188,10 +187,9 @@ def main():
                 st.session_state.scraped_data = asyncio.run(scrape(url))
                 st.session_state.chat_history = []  # Reset history for new content
                 st.success("Content processed and stored!")
-                st.session_state.question = prompt
                 # st.session_state.question = True
                 # st.rerun()
-        if st.session_state.scraped_data:
+        if prompt and st.session_state.scraped_data:
             last_five_history = st.session_state.chat_history[-5:]  # Pass last 5 messages
             answer = query_openai_api(st.session_state.scraped_data, prompt, assistant_placeholder, last_five_history)
             st.session_state.chat_history.append({"role": "user", "content": prompt})
@@ -200,7 +198,7 @@ def main():
             # prompt = ""
             st.rerun()
         else:
-            st.warning("⚠️ Please scrape content first before asking a question.")
+            st.warning("⚠️ Please give at least one URL  first before asking a question.")
     if st.session_state.question:
         last_five_history = st.session_state.chat_history[-5:]  # Pass last 5 messages
         answer = query_openai_api(st.session_state.scraped_data, st.session_state.question, assistant_placeholder, last_five_history)
