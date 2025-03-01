@@ -12,11 +12,11 @@ async def scrape(urls):
 
         for url in urls:
             try:
-                await page.goto(url, wait_until="networkidle",timeout=60000) # Ensure all network request are complete
+                await page.goto(url, wait_until="networkidle") # Ensure all network request are complete
                 await asyncio.sleep(2)  # Ensure all dynamic content is rendered (for React, Angular, etc.)
 
                 # Wait for body to ensure full page load
-                await page.wait_for_selector("body", timeout=1000)
+                await page.wait_for_selector("body", timeout=500)
 
                 # Extract page details
                 title = await page.title()
